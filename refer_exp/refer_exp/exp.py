@@ -1,20 +1,15 @@
+'''
 import os
 os.system("pip install -q requests")
+import requests
+
 
 # same as  os.system, but more ideomatic
 # unable to quiet
 # import subprocess
 # subprocess.call(["pip","install","-q", "requests"],, stdout=open(os.devnull, 'wb'))
+'''
 
-import requests
-import json
-from django.http import HttpResponse
-from django.http import JsonResponse
-from django import db
-from main import models #TODO: import specific models from .models, to prevent having to retype models everytime
-from django.core import serializers
-
-from stuff import main
 '''
 def request(url):
   return requests.get(url)
@@ -23,38 +18,77 @@ def http_to_json(url):
   return requests.get(url).json
 '''
 
-#Done
-#GET request from HTML to ModelAPI
-#Returns a JSON containing username, id, and company.
-def all_sellers():
-  r = requests.get(r'^localhost:8001/api/v1/sellers/all$') 
-  return main.all_sellers(r)
 
-#Done
+import urllib.request
+import urllib.parse
+import json
+from django.http import HttpResponse
+from django.http import JsonResponse
+from django import db
+from main import models #TODO: import specific models from .models, to prevent having to retype models everytime
+from django.core import serializers
+
+from stuff import main
+
+
 #GET request from HTML to ModelAPI
 #Returns a JSON containing username, id, and company.
-def all_buyers():
-  r = requests.get(r'^localhost:8001/api/v1/buyers/all$') 
-  return main.all_buyers(r)
+def all_sellers(request):
+  # r = requests.get(r'^localhost:8001/api/v1/sellers/all$') 
+  return main.all_sellers(request)
+
+#GET request from HTML to ModelAPI
+#Returns a JSON containing username, id, and company.
+def all_buyers(request):
+  # r = requests.get(r'^localhost:8001/api/v1/buyers/all$') 
+  return main.all_buyers(request)
 
 #POST request from HTML to ModelAPI
 #requies a username and password field
-def log_in(username, password):
+def log_in(request, username, password):
+  if request.method != 'POST':
+      return _error_response(request, "must make POST request")
+  post_data = {
+  "username":username
+  "password":password
+  } 
+  post_encoded = urllib.parse.urlencode(post_data).encode('utf-8')
+  req = urllib.request.Request(r'^localhost:8001/api/v1/auth/login$', data=post_encoded, method='POST')
+  resp_json = urllib.request.urlopen(req).read().decode('utf-8')
+  resp = json.loads(resp_json)
+  return JsonResponse(resp)
+  '''
   info = {
   "username":username
   "password":password
   } 
   r = requests.post(r'^localhost:8001/api/v1/auth/login$', data = info)
   return main.log_in(r)
+  '''
 
 #POST request from HTML to ModelAPI
 #requies a authenticator
 def log_out(auth):
+  if request.method != 'POST':
+        return _error_response(request, "must make POST request")
+  post_data = {
+  "authenticator" : request.POST['authenticator']}
+  } 
+  if 'authenticator' not in request.POST:
+        return _error_response(request, "missing auth")
+  post_encoded = urllib.parse.urlencode(post_data).encode('utf-8')
+  req = urllib.request.Request(r'^localhost:8001/api/v1/auth/login$', data=post_encoded, method='POST')
+  resp_json = urllib.request.urlopen(req).read().decode('utf-8')
+  resp = json.loads(resp_json)
+  return JsonResponse(resp)
+  '''
+
   info = {
   'authenticator':auth
   }
   r = requests.post(r'^localhost:8001/api/v1/auth/logout$', data = info)
   return main.log_out(r)
+  '''
 
 #still seems awkward
 #POST request
@@ -67,7 +101,9 @@ def create_transaction(request):
 #GET request
 #user_id field
 #how does front-end find user_id? From cookie?
-def lookup_user(user_id):
+def lookup_user(request, user_id):
+  if  request.method !='GET':
+        return _error_response(request, "must make GET request")
   args = user_id
   r = requests.get(r'^localhost:8001/api/v1/users/(\d+)$')
   return main.lookup_user(r,args)
@@ -79,13 +115,42 @@ def view_all_transactions():
 
 #POST
 #usertype, password fields
-def create_user(usertype, username, password):
+#expected to contain
+def create_user(request):
+  if request.method != 'POST':
+        return _error_response(request, "must make POST request")
+  if 'usertype' not in request.POST:
+        return _error_response(request, "Usertype is not found")
+  if 'password' not in request.POST or 'username' not in request.POST:
+        return _error_response(request, "missing fields for Basic User")
+  post_data = {
+  "usertype":request.POST['usertype']
+  "username":request.POST['username']
+  "password":request.POST['password']
+  } 
+  post_encoded = urllib.parse.urlencode(post_data).encode('utf-8')
+  req = urllib.request.Request(r'^localhost:8001/api/v1/auth/login$', data=post_encoded, method='POST')
+  resp_json = urllib.request.urlopen(req).read().decode('utf-8')
+  resp = json.loads(resp_json)
+  return JsonResponse(resp)
+
+  '''
   info = {
   "usertype":usertype
   "username":username
   "password":password
   } 
   r = requests.post(r'^localhost:8001/api/v1/users/create$', data = info )
-  return main.create_user(r)
+  return main.create_user(request)
+  '''
 
+#Helper
+def _error_response(request, error_msg):
+    return JsonResponse({'ok': False, 'error': error_msg})
+
+def _success_response(request, resp=None):
+    if resp:
+        return JsonResponse({'ok': True, 'resp': resp})
+    else:
+        return JsonResponse({'ok': True})
 
