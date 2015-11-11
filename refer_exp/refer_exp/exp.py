@@ -25,9 +25,9 @@ import json
 from django.http import HttpResponse
 from django.http import JsonResponse
 from django import db
-from main import models #TODO: import specific models from .models, to prevent having to retype models everytime
+#from main import models #TODO: import specific models from .models, to prevent having to retype models everytime
 from django.core import serializers
-from stuff import main
+#from stuff import main
 
 
 #GET request from HTML to ModelAPI
@@ -54,7 +54,7 @@ def log_in(request, username, password):
   if request.method != 'POST':
       return _error_response(request, "must make POST request")
   post_data = {
-  "username":username
+  "username":username,
   "password":password
   } 
   post_encoded = urllib.parse.urlencode(post_data).encode('utf-8')
@@ -80,7 +80,7 @@ def log_out(auth):
          return _error_response(request, "missing auth")
   post_data = {
   "authenticator" : request.POST['authenticator']}
-  } 
+ 
   post_encoded = urllib.parse.urlencode(post_data).encode('utf-8')
   req = urllib.request.Request(r'^localhost:8001/api/v1/auth/logout$', data=post_encoded, method='POST')
   resp_json = urllib.request.urlopen(req).read().decode('utf-8')
@@ -105,10 +105,10 @@ def create_transaction(request):
   if 'buyer_u_id' not in request.POST or 'seller_u_id' not in request.POST or 'negotiation' not in request.POST:
         return _error_response(request, "missing required fields")
   post_data = {
-  "buyer_u_id" : request.POST['buyer_u_id']}
-  "seller_u_id" : request.POST['seller_u_id']}
+  "buyer_u_id" : request.POST['buyer_u_id'], 
+  "seller_u_id" : request.POST['seller_u_id'],
   "negotiation" : request.POST['negotiation']}
-  } 
+ 
   post_encoded = urllib.parse.urlencode(post_data).encode('utf-8')
   req = urllib.request.Request(r'^localhost:8001/api/v1/transaction/create$', data=post_encoded, method='POST')
   resp_json = urllib.request.urlopen(req).read().decode('utf-8')
@@ -149,8 +149,8 @@ def create_user(request):
   if 'password' not in request.POST or 'username' not in request.POST:
         return _error_response(request, "missing fields for Basic User")
   post_data = {
-  "usertype":request.POST['usertype']
-  "username":request.POST['username']
+  "usertype":request.POST['usertype'],
+  "username":request.POST['username'],
   "password":request.POST['password']
   } 
   post_encoded = urllib.parse.urlencode(post_data).encode('utf-8')
