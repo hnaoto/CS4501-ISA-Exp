@@ -23,7 +23,8 @@ urlpatterns = patterns('',
     url(r'^api/v1/auth/logout$', exp.log_out),
     #url(r'^api/v1/auth/verify$', exp.check_auth),
     #url(r'^api/v1/auth/delete_old_auth$', exp.delete_old_auth),
-    #url(r'^api/v1/auth/note/create$', exp.create_note),
+    url(r'^api/v1/note/create$', exp.create_note),
+		url(r'^api/v1/note/search$', exp.search_note),
 
 )
 

@@ -18,15 +18,16 @@ def http_to_json(url):
   return requests.get(url).json
 '''
 
-
+#import requests
 import urllib.request
 import urllib.parse
 import json
 from django.http import HttpResponse
 from django.http import JsonResponse
 from django import db
-#from main import models #TODO: import specific models from .models, to prevent having to retype models everytime
 from django.core import serializers
+from elasticsearch import Elasticsearch
+from kafka import SimpleProducer, KafkaClient
 #from stuff import main
 
 
@@ -169,7 +170,60 @@ def create_user(request):
   return main.create_user(request)
   '''
 
+
+#UPDATES 
+#create note
+def create_note(request):
+	if request.method!= 'POST':
+		return _error_response(request, "must make POST request")
+	if 'authenticator' not in request.POST or 'title' not in request.POST or 'details' not in request.POST:
+		return _error_response(request, "missing fields")
+	
+	values = { 
+						"authenticator" : request.POST['authenticator'],
+						"title" : request.POST['title'],
+						"details": request.POST['details']
+	}
+	data = urllib.parse.urlencode(values).encode('utf-8')
+
+
+	req = urllib.request.Request('http://models:8000/api/v1/note/create', data=data, method='POST')
+	resp_json = urllib.request.urlopen(req).read().decode('utf-8')
+	resp = json.loads(resp_json)
+	if resp["ok"] is True:
+		#kafka = KafkaClient('kafka:9092')
+
+		#producer = SimpleProducer(kafka)
+		#some_new_listing = {values}
+		#producer.send_messages(b'new-listings-topic', json.dumps(some_new_listing).encode('utf-8'))
+		return _success_response(request, resp["resp"])
+	else:
+		return _error_response(request, resp["error"])
+
+
+
+#url http://localhost:8002/api/v1/note/search?q=
+def search_note(request):
+	if request.method!= 'GET':
+		return _error_response(request, "must make GET request")	
+	es = Elasticsearch(['es'])
+	es.indices.refresh(index="note")
+	resp = es.search(index='note', body={'query': {'query_string': {'query': request.GET.get('q', '')}}, 'size': 10})
+	if resp['timed_out'] is True:
+		return _error_response(request, "search service is down.")
+	if resp['hits']['total'] is 0:
+		return _success_response(request, "No matched results found.")
+	data = []
+	for s in resp['hits']['hits']:
+			data.append(s['_source'])
+	return _success_response(request, data)
+	
+
+
+
+
 #Helper
+
 def _error_response(request, error_msg):
     return JsonResponse({'ok': False, 'error': error_msg})
 
