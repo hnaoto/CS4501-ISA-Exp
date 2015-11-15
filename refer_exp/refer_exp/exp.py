@@ -171,7 +171,59 @@ def create_user(request):
   '''
 
 
-#UPDATES 
+
+
+
+
+####UPDATES###### 
+##search for companies and search for notes
+
+#create company 
+def create_company(request):
+	if request.method != 'POST':
+		return _error_response(request, "must make POST request")
+	if 'name' not in request.POST or 'description' not in request.POST:
+		return _error_response(request, "missing fields")
+	
+	values = { 
+						"name" : request.POST['name'],
+						"description" : request.POST['description'],
+	}
+	data = urllib.parse.urlencode(values).encode('utf-8')
+	req = urllib.request.Request('http://models:8000/api/v1/company/create', data=data, method='POST')
+	resp_json = urllib.request.urlopen(req).read().decode('utf-8')
+	resp = json.loads(resp_json)
+	if resp["ok"] is True:
+		#es_add is a temporay helper function adding listing to ES directly without working with kafka 
+		es_add_company_listing(request, resp["resp"]["company_id"])
+		return _success_response(request, resp["resp"])
+	else:
+		return _error_response(request, resp["error"])
+
+
+
+#url http://localhost:8002/api/v1/company/search?q=
+def search_company(request):
+	if request.method!= 'GET':
+		return _error_response(request, "must make GET request")	
+	es = Elasticsearch(['es'])
+	es.indices.refresh(index="company_index")
+	resp = es.search(index='company_index', body={'query': {'query_string': {'query': request.GET.get('q', '')}}, 'size': 10})
+	if resp['timed_out'] is True:
+		return _error_response(request, "search service is down.")
+	if resp['hits']['total'] is 0:
+		return _success_response(request, "No matched results found.")
+	data = []
+	for s in resp['hits']['hits']:
+			data.append(s['_source'])
+	return _success_response(request, data)
+
+
+
+
+
+
+
 #create note
 def create_note(request):
 	if request.method!= 'POST':
@@ -192,13 +244,19 @@ def create_note(request):
 	resp = json.loads(resp_json)
 	if resp["ok"] is True:
 		#kafka = KafkaClient('kafka:9092')
-
 		#producer = SimpleProducer(kafka)
 		#some_new_listing = {values}
 		#producer.send_messages(b'new-listings-topic', json.dumps(some_new_listing).encode('utf-8'))
+	  
+
+		#es_add is a temporay helper function adding listing to ES directly without working with kafka 
+		es_add_note_listing(request, resp["resp"]["id"], resp["resp"]["username"])
 		return _success_response(request, resp["resp"])
 	else:
 		return _error_response(request, resp["error"])
+
+
+
 
 
 
@@ -207,8 +265,8 @@ def search_note(request):
 	if request.method!= 'GET':
 		return _error_response(request, "must make GET request")	
 	es = Elasticsearch(['es'])
-	es.indices.refresh(index="note")
-	resp = es.search(index='note', body={'query': {'query_string': {'query': request.GET.get('q', '')}}, 'size': 10})
+	es.indices.refresh(index="note_index")
+	resp = es.search(index='note_index', body={'query': {'query_string': {'query': request.GET.get('q', '')}}, 'size': 10})
 	if resp['timed_out'] is True:
 		return _error_response(request, "search service is down.")
 	if resp['hits']['total'] is 0:
@@ -217,12 +275,24 @@ def search_note(request):
 	for s in resp['hits']['hits']:
 			data.append(s['_source'])
 	return _success_response(request, data)
+
+
 	
 
-
-
-
 #Helper
+def es_add_note_listing(request, id, username):
+	es = Elasticsearch(['es'])
+	note_new_listing = {'title': request.POST['title'], 'details': request.POST['details'], 'username': username, 'id': id}
+	es.index(index='note_index',doc_type='listing' , id=note_new_listing['id'], body=note_new_listing)
+	es.indices.refresh(index="note_index")
+
+def es_add_company_listing(request, id):
+	es = Elasticsearch(['es'])
+	company_new_listing = {'name': request.POST['name'], 'description': request.POST['description'], 'id': id}
+	es.index(index='company_index',doc_type='listing' , id=company_new_listing['id'], body=company_new_listing)
+	es.indices.refresh(index='company_index')
+
+
 
 def _error_response(request, error_msg):
     return JsonResponse({'ok': False, 'error': error_msg})

@@ -15,7 +15,7 @@ urlpatterns = patterns('',
     url(r'^api/v1/sellers/all$', exp.all_sellers),
     url(r'^api/v1/transaction/create$', exp.create_transaction),
     #url(r'^api/v1/transaction/all$', exp.view_all_transactions),
-    #url(r'^api/v1/company/create$', exp.create_company),
+    url(r'^api/v1/company/create$', exp.create_company),
     #url(r'^api/v1/job-application/create$', exp.create_JobApplication),
     #url(r'^api/v1/job-application/view/(\d+)$', exp.view_company_JobApplications),
     url(r'^api/v1/users/(\d+)$', exp.lookup_user),
@@ -25,6 +25,7 @@ urlpatterns = patterns('',
     #url(r'^api/v1/auth/delete_old_auth$', exp.delete_old_auth),
     url(r'^api/v1/note/create$', exp.create_note),
 		url(r'^api/v1/note/search$', exp.search_note),
+		url(r'^api/v1/company/search$', exp.search_company),
 
 )
 
