@@ -51,6 +51,7 @@ def all_buyers(request):
 
 #POST request from HTML to ModelAPI
 #requies a username and password field
+''''
 def log_in(request, username, password):
   if request.method != 'POST':
       return _error_response(request, "must make POST request")
@@ -63,14 +64,10 @@ def log_in(request, username, password):
   resp_json = urllib.request.urlopen(req).read().decode('utf-8')
   resp = json.loads(resp_json)
   return JsonResponse(resp)
-  '''
-  info = {
-  "username":username
-  "password":password
-  } 
-  r = requests.post(r'^localhost:8001/api/v1/auth/login$', data = info)
-  return main.log_in(r)
-  '''
+  
+
+  
+'''
 
 #POST request from HTML to ModelAPI
 #requies a authenticator
@@ -178,7 +175,32 @@ def create_user(request):
 ####UPDATES###### 
 ##search for companies and search for notes
 
-#create company 
+
+
+#Rewrite log in
+#Tested 
+def log_in(request):
+	if request.method != 'POST':
+		return _error_response(request, "must make POST request")
+	post_data = {
+	"username":request.POST['username'],
+	"password":request.POST['password']
+	} 
+	post_encoded = urllib.parse.urlencode(post_data).encode('utf-8')
+	req = urllib.request.Request('http://models:8000/api/v1/auth/login', data=post_encoded, method='POST')
+	resp_json = urllib.request.urlopen(req).read().decode('utf-8')
+	resp = json.loads(resp_json)
+	if resp["ok"] is True:
+		return _success_response(request, resp["resp"])
+	else:
+		return _error_response(request, resp["error"])
+
+
+
+
+
+#Create company 
+#Tested
 def create_company(request):
 	if request.method != 'POST':
 		return _error_response(request, "must make POST request")
@@ -201,8 +223,9 @@ def create_company(request):
 		return _error_response(request, resp["error"])
 
 
-
+#Serarch compnay 
 #url http://localhost:8002/api/v1/company/search?q=
+#Tested
 def search_company(request):
 	if request.method!= 'GET':
 		return _error_response(request, "must make GET request")	
@@ -224,7 +247,8 @@ def search_company(request):
 
 
 
-#create note
+#Csreate note
+#Tested
 def create_note(request):
 	if request.method!= 'POST':
 		return _error_response(request, "must make POST request")
@@ -243,14 +267,16 @@ def create_note(request):
 	resp_json = urllib.request.urlopen(req).read().decode('utf-8')
 	resp = json.loads(resp_json)
 	if resp["ok"] is True:
-		#kafka = KafkaClient('kafka:9092')
-		#producer = SimpleProducer(kafka)
-		#some_new_listing = {values}
-		#producer.send_messages(b'new-listings-topic', json.dumps(some_new_listing).encode('utf-8'))
-	  
-
-		#es_add is a temporay helper function adding listing to ES directly without working with kafka 
-		es_add_note_listing(request, resp["resp"]["id"], resp["resp"]["username"])
+		kafka = KafkaClient('kafka:9092')
+		producer = SimpleProducer(kafka)
+		note_new_listing = {
+		"title" : request.POST['title'], 
+		"details": request.POST['details'],
+		"id": resp["resp"]["id"]
+		}
+		producer.send_messages(b'note-listings-topic', json.dumps(note_new_listing).encode('utf-8'))
+	  		#es_add is a temporay helper function adding listing to ES directly without working with kafka 
+		#es_add_note_listing(request, resp["resp"]["id"], resp["resp"]["username"])
 		return _success_response(request, resp["resp"])
 	else:
 		return _error_response(request, resp["error"])
